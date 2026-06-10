@@ -129,7 +129,7 @@
         </div>
 
         <!-- GARDEN OPS TAB -->
-        <div id="garden" class="tab-content max-w-7xl mx-auto h-full hidden">
+        <div id="garden" class="tab-content max-w-7xl mx-auto h-auto xl:h-full hidden">
             <!-- Inner wrapper crucial for flex layout without breaking tab display -->
             <div class="flex flex-col h-full">
                 <header class="mb-6 flex-shrink-0">
@@ -137,10 +137,10 @@
                     <p class="text-slate-400 mt-1">Manage physical infrastructure and track plant lifecycles.</p>
                 </header>
 
-                <div class="flex-1 grid grid-cols-1 xl:grid-cols-4 gap-6 min-h-[600px] pb-24 md:pb-0">
+                <div class="flex-1 flex flex-col xl:grid xl:grid-cols-4 gap-6 min-h-[600px] pb-24 md:pb-0">
                     
                     <!-- Left Column: Interactive Node Editor -->
-                    <div class="xl:col-span-1 flex flex-col order-2 xl:order-1" id="node-terminal-container">
+                    <div class="xl:col-span-1 flex flex-col order-2 xl:order-1 min-h-[500px] xl:min-h-0" id="node-terminal-container">
                         <div class="bg-slate-850 rounded-2xl border border-slate-700/50 p-5 flex-1 flex flex-col h-full overflow-y-auto">
                             <h3 class="text-lg font-bold text-white mb-4 border-b border-slate-700 pb-2 flex justify-between items-center">
                                 Node Terminal
@@ -215,7 +215,7 @@
                     </div>
 
                     <!-- Right Column: Infrastructure Grids -->
-                    <div class="xl:col-span-3 flex flex-col gap-6 order-1 xl:order-2 overflow-hidden">
+                    <div class="xl:col-span-3 flex flex-col gap-6 order-1 xl:order-2">
                         
                         <!-- 4x4 Grow Tent -->
                         <div class="bg-slate-850 rounded-2xl border border-slate-700/50 p-4 flex-shrink-0">
