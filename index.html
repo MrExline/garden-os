@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sauce OS</title>
+    
+    <!-- Fonts and Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: { 400: '#f97316', 500: '#ea580c', 600: '#c2410c' },
+                        slate: { 850: '#151e2e' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- IndexedDB Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
+
+    <style>
+        /* Base Variables & Utilities */
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Hide scrollbar for nav but allow scrolling */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Map Interaction Utilities */
+        .cursor-grabbing { cursor: grabbing !important; }
+        .map-viewport { touch-action: none; } /* Critical for smooth mobile swiping */
+
+        /* iOS Safari Form Overrides to prevent auto-zoom */
+        @media screen and (max-width: 768px) {
+            input, select, textarea {
+                font-size: 16px !important;
+            }
+        }
+
+        /* Toast Animation */
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(100%); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .toast-animate { animation: slideUp 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200 h-[100dvh] flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Mobile Top Header -->
+    <header class="md:hidden bg-slate-850 border-b border-slate-700 p-4 flex justify-between items-center z-20 flex-shrink-0">
+        <div class="text-brand-400 font-bold text-lg flex items-center gap-2">
+            <span>🔥</span> Sauce OS
+        </div>
+    </header>
+
+    <!-- Navigation (Sidebar on Desktop, Bottom Bar on Mobile) -->
+    <nav class="bg-slate-850 border-t md:border-t-0 md:border-r border-slate-700 z-20 order-3 md:order-1 flex-shrink-0 
+                w-full md:w-64 h-16 md:h-full flex md:flex-col pb-safe">
+        
+        <!-- Desktop Branding -->
+        <div class="hidden md:flex p-6 border-b border-slate-700 text-brand-400 font-bold text-xl items-center gap-2">
+            <span>🔥</span> Sauce OS
+        </div>
+
+        <!-- Nav Links -->
+        <div class="flex md:flex-col w-full h-full justify-around md:justify-start p-2 md:p-4 gap-2 no-scrollbar overflow-x-auto">
+            <button onclick="switchTab('overview')" id="nav-overview" class="nav-btn flex flex-col md:flex-row items-center gap-1 md:gap-3 p-2 md:p-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors flex-1 md:flex-none">
+                <svg class="w-5 h-5 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                <span class="text-[10px] md:text-sm font-medium">Dashboard</span>
+            </button>
+            <button onclick="switchTab('garden')" id="nav-garden" class="nav-btn flex flex-col md:flex-row items-center gap-1 md:gap-3 p-2 md:p-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors flex-1 md:flex-none">
+                <svg class="w-5 h-5 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path></svg>
+                <span class="text-[10px] md:text-sm font-medium">Garden Ops</span>
+            </button>
+            <button onclick="switchTab('rd')" id="nav-rd" class="nav-btn flex flex-col md:flex-row items-center gap-1 md:gap-3 p-2 md:p-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors flex-1 md:flex-none">
+                <svg class="w-5 h-5 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                <span class="text-[10px] md:text-sm font-medium">R&D Recipes</span>
+            </button>
+            <button onclick="switchTab('lore')" id="nav-lore" class="nav-btn flex flex-col md:flex-row items-center gap-1 md:gap-3 p-2 md:p-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-colors flex-1 md:flex-none">
+                <svg class="w-5 h-5 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                <span class="text-[10px] md:text-sm font-medium">Brand Lore</span>
+            </button>
+        </div>
+    </nav>
+
+    <main class="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 order-2 md:order-2 relative bg-slate-900" id="main-content">
+        
+        <!-- DASHBOARD TAB -->
+        <div id="overview" class="tab-content max-w-5xl mx-auto hidden">
+            <header class="mb-8">
+                <h1 class="text-2xl md:text-3xl font-bold text-white tracking-tight">Command Center</h1>
+                <p class="text-slate-400 mt-1">2026 Pilot Phase Operations</p>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Status Card -->
+                <div class="bg-slate-850 p-6 rounded-2xl border border-slate-700/50 shadow-sm">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                        <h3 class="text-lg font-semibold text-white">System Status</h3>
+                    </div>
+                    <p class="text-sm text-slate-300">Phase 1 Infrastructure online. Database persistent layer active via IndexedDB.</p>
+                </div>
+
+                <!-- Crop Distribution Widget -->
+                <div class="bg-slate-850 p-6 rounded-2xl border border-slate-700/50 shadow-sm flex flex-col h-full">
+                    <h3 class="text-lg font-semibold text-white mb-4">Live Crop Distribution</h3>
+                    <div class="flex-1 overflow-y-auto pr-2" id="dashboard-stats-container">
+                        <!-- Stats rendered via JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GARDEN OPS TAB -->
+        <div id="garden" class="tab-content max-w-7xl mx-auto h-full hidden">
+            <!-- Inner wrapper crucial for flex layout without breaking tab display -->
+            <div class="flex flex-col h-full">
+                <header class="mb-6 flex-shrink-0">
+                    <h2 class="text-2xl md:text-3xl font-bold text-white tracking-tight">Garden Ops</h2>
+                    <p class="text-slate-400 mt-1">Manage physical infrastructure and track plant lifecycles.</p>
+                </header>
+
+                <div class="flex-1 grid grid-cols-1 xl:grid-cols-4 gap-6 min-h-[600px] pb-24 md:pb-0">
+                    
+                    <!-- Left Column: Interactive Node Editor -->
+                    <div class="xl:col-span-1 flex flex-col order-2 xl:order-1" id="node-terminal-container">
+                        <div class="bg-slate-850 rounded-2xl border border-slate-700/50 p-5 flex-1 flex flex-col h-full overflow-y-auto">
+                            <h3 class="text-lg font-bold text-white mb-4 border-b border-slate-700 pb-2 flex justify-between items-center">
+                                Node Terminal
+                                <span id="active-node-display" class="bg-slate-800 text-brand-400 px-2 py-1 rounded text-xs font-mono">NONE</span>
+                            </h3>
+
+                            <!-- Data Form -->
+                            <form id="plantForm" class="space-y-4" onsubmit="event.preventDefault();">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Plant Identity</label>
+                                    <select id="p-catalog" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-brand-500 outline-none transition-all" onchange="handleCatalogChange(this)">
+                                        <option value="">-- Empty Cell --</option>
+                                        <optgroup label="Saved Varieties" id="catalog-saved-options"></optgroup>
+                                        <option value="NEW_CUSTOM">+ Add New Custom Variety...</option>
+                                    </select>
+                                </div>
+
+                                <!-- Custom Variety Builder -->
+                                <div id="custom-variety-builder" class="hidden space-y-3 bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                                    <div>
+                                        <label class="block text-xs text-slate-400 mb-1">Category (e.g., Tomato)</label>
+                                        <input type="text" id="cv-category" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-xs text-slate-400 mb-1">Variety Name</label>
+                                            <input type="text" id="cv-variety" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs text-slate-400 mb-1">Abbr (3 Letters)</label>
+                                            <input type="text" id="cv-abbr" maxlength="3" class="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white font-mono uppercase">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Seeded</label>
+                                        <input type="date" id="p-seeded" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Transplanted</label>
+                                        <input type="date" id="p-transplanted" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white outline-none">
+                                    </div>
+                                    <div class="col-span-2">
+                                        <label class="block text-xs font-medium text-slate-400 mb-1 uppercase tracking-wider">Planted Out</label>
+                                        <input type="date" id="p-planted" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white outline-none">
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-3 pt-2">
+                                    <button type="button" onclick="savePlant()" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white py-2 rounded-lg text-sm font-medium transition-colors shadow-sm">Save Node</button>
+                                    <button type="button" onclick="deletePlant()" class="px-4 bg-slate-700 hover:bg-red-900/80 hover:text-red-200 text-slate-300 py-2 rounded-lg text-sm font-medium transition-colors">Clear</button>
+                                </div>
+                            </form>
+
+                            <!-- Observation Log -->
+                            <div class="mt-6 flex-1 flex flex-col border-t border-slate-700 pt-5">
+                                <h4 class="text-sm font-bold text-white mb-3 uppercase tracking-wider">Observation Log</h4>
+                                
+                                <div class="flex gap-2 mb-4">
+                                    <input type="date" id="new-note-date" class="w-[120px] bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white">
+                                    <input type="text" id="new-note-text" placeholder="Add note..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white outline-none">
+                                    <button onclick="addNote()" class="bg-slate-700 hover:bg-slate-600 text-white px-3 rounded-lg text-sm transition-colors">+</button>
+                                </div>
+
+                                <div id="notes-container" class="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[150px]">
+                                    <!-- Notes injected here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Infrastructure Grids -->
+                    <div class="xl:col-span-3 flex flex-col gap-6 order-1 xl:order-2 overflow-hidden">
+                        
+                        <!-- 4x4 Grow Tent -->
+                        <div class="bg-slate-850 rounded-2xl border border-slate-700/50 p-4 flex-shrink-0">
+                            <h3 class="text-lg font-semibold text-white mb-4">4x4 Incubator Tent</h3>
+                            <div class="grid gap-2 overflow-x-auto pb-2 w-full max-w-[200px]" style="grid-template-columns: repeat(4, 1fr);" id="tentGrid">
+                                <!-- Cells generated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- 26x13 Outdoor Plot with Pan/Zoom -->
+                        <div class="bg-slate-850 rounded-2xl border border-slate-700/50 p-4 relative flex-1 flex flex-col min-h-[400px]">
+                            <div class="flex justify-between items-center mb-4 flex-shrink-0">
+                                <h3 class="text-lg font-semibold text-white">13x26 Outdoor Plot</h3>
+                                <div class="flex gap-2 bg-slate-800 rounded-lg p-1">
+                                    <button onclick="zoomPlot(0.2)" class="p-2 hover:bg-slate-700 rounded text-slate-300"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg></button>
+                                    <button onclick="zoomPlot(-0.2)" class="p-2 hover:bg-slate-700 rounded text-slate-300"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg></button>
+                                    <button onclick="resetPlotTransform()" class="p-2 hover:bg-slate-700 rounded text-slate-300"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg></button>
+                                </div>
+                            </div>
+                            <div class="flex-1 overflow-hidden relative map-viewport bg-slate-900 rounded-xl border border-slate-700 cursor-grab" id="plotViewport">
+                                <!-- Drag Wrapper -->
+                                <div id="plotTransformWrapper" class="absolute origin-top-left transition-transform duration-75 ease-out p-8">
+                                    <div class="grid gap-1 w-fit" style="grid-template-columns: repeat(26, minmax(36px, 36px));" id="plotGrid">
+                                        <!-- Cells generated by JS -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- R&D RECIPES TAB -->
+        <div id="rd" class="tab-content max-w-5xl mx-auto hidden">
+            <header class="mb-8">
+                <h1 class="text-2xl md:text-3xl font-bold text-white tracking-tight">R&D Laboratory</h1>
+                <p class="text-slate-400 mt-1">Scale master formulas and log batch outputs.</p>
+            </header>
+
+            <!-- Scaler Tool -->
+            <div class="bg-slate-850 p-6 rounded-2xl border border-slate-700/50 shadow-sm mb-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-semibold text-white">Recipe Volume Scaler</h3>
+                    <span class="bg-brand-500/20 text-brand-400 px-3 py-1 rounded-full text-xs font-medium">Standardized %</span>
+                </div>
+                
+                <div class="mb-8">
+                    <div class="flex justify-between text-sm text-slate-400 mb-2">
+                        <span>Target Batch Size:</span>
+                        <span id="volume-display" class="font-bold text-white text-lg">16 oz</span>
+                    </div>
+                    <input type="range" id="volume-slider" min="8" max="128" step="8" value="16" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-500" oninput="calculateRecipe()">
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-slate-900 border border-slate-700 p-4 rounded-xl text-center">
+                        <div class="text-slate-400 text-xs uppercase mb-1">Peppers (60%)</div>
+                        <div id="calc-peppers" class="text-xl font-bold text-brand-400">9.6 oz</div>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-700 p-4 rounded-xl text-center">
+                        <div class="text-slate-400 text-xs uppercase mb-1">Vinegar (30%)</div>
+                        <div id="calc-vinegar" class="text-xl font-bold text-brand-400">4.8 oz</div>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-700 p-4 rounded-xl text-center">
+                        <div class="text-slate-400 text-xs uppercase mb-1">Garlic (7%)</div>
+                        <div id="calc-garlic" class="text-xl font-bold text-brand-400">1.1 oz</div>
+                    </div>
+                    <div class="bg-slate-900 border border-slate-700 p-4 rounded-xl text-center">
+                        <div class="text-slate-400 text-xs uppercase mb-1">Salt (3%)</div>
+                        <div id="calc-salt" class="text-xl font-bold text-brand-400">0.5 oz</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Batch Ledger -->
+            <div class="bg-slate-850 p-6 rounded-2xl border border-slate-700/50 shadow-sm">
+                <h3 class="text-lg font-semibold text-white mb-4">Log Master Batch</h3>
+                <div class="flex flex-col md:flex-row gap-4 mb-6">
+                    <div class="flex-1">
+                        <label class="block text-xs text-slate-400 mb-1">Style Profile Name</label>
+                        <input type="text" id="batchName" placeholder="e.g., Hellfire Mash" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-brand-500 outline-none">
+                    </div>
+                    <div class="w-full md:w-32">
+                        <label class="block text-xs text-slate-400 mb-1">Final pH</label>
+                        <input type="number" step="0.01" id="batchPH" placeholder="3.80" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-brand-500 outline-none">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="addBatchLog()" class="w-full md:w-auto bg-brand-500 hover:bg-brand-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium transition-colors">Commit to Ledger</button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto border border-slate-700 rounded-xl">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="bg-slate-900/50 text-xs uppercase text-slate-400 border-b border-slate-700">
+                            <tr>
+                                <th class="px-4 py-3">Batch ID</th>
+                                <th class="px-4 py-3">Profile Name</th>
+                                <th class="px-4 py-3">Fermentation</th>
+                                <th class="px-4 py-3">pH Audit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recipeTableBody" class="divide-y divide-slate-700/50">
+                            <!-- Populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- BRAND LORE TAB -->
+        <div id="lore" class="tab-content max-w-4xl mx-auto hidden">
+            <header class="mb-8">
+                <h1 class="text-2xl md:text-3xl font-bold text-white tracking-tight">Campaign Vault</h1>
+                <p class="text-slate-400 mt-1">D&D Themed Creative Assets & Lore</p>
+            </header>
+
+            <div class="space-y-6">
+                <div class="bg-slate-850 p-6 rounded-2xl border border-slate-700/50 shadow-sm relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                    <h3 class="text-xl font-bold text-brand-400 mb-2">The Beholder</h3>
+                    <p class="text-slate-300 leading-relaxed mb-4">
+                        A layered green jalapeño profile punctuated by heavy roasted garlic aromatics. The flavor profile attacks from multiple angles, mirroring the creature's eye stalks. 
+                    </p>
+                </div>
+                <div class="bg-slate-850 p-6 rounded-2xl border border-slate-700/50 shadow-sm relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                    <h3 class="text-xl font-bold text-red-400 mb-2">Hellfire Dice Mash</h3>
+                    <p class="text-slate-300 leading-relaxed mb-4">
+                        Pure superhot fermentation mash engineered for maximum heat-seeker engagement. Roll the dice on your tolerance. Contains F2 Cross Carolina Reapers.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- UI Toasts -->
+    <div id="toast-container" class="fixed bottom-20 md:bottom-10 right-4 md:right-10 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        // --- Core Data Structures ---
+        let db = { tent: {}, plot: {} };
+        let plantCatalog = [
+            { category: 'Pepper', variety: 'Carolina Reaper', abbr: 'CR' },
+            { category: 'Pepper', variety: 'Ghost Pepper', abbr: 'GP' },
+            { category: 'Pepper', variety: 'Jalapeno', abbr: 'JL' }
+        ];
+        let recipes = [
+            { id: '#001', name: "Carolina Reaper Base", ferment: "14 Days", ph: "3.82" },
+            { id: '#002', name: "Ghost Pepper Base", ferment: "30 Days", ph: "3.65" }
+        ];
+
+        // --- Persistence Engine (localForage / IndexedDB) ---
+        async function saveState() {
+            try {
+                await localforage.setItem('sauce_os_db', db);
+                await localforage.setItem('sauce_os_catalog', plantCatalog);
+                await localforage.setItem('sauce_os_recipes', recipes);
+                updateDashboardStats();
+            } catch (err) {
+                console.error("Error saving state:", err);
+            }
+        }
+
+        async function loadState() {
+            try {
+                const savedDb = await localforage.getItem('sauce_os_db');
+                const savedCatalog = await localforage.getItem('sauce_os_catalog');
+                const savedRecipes = await localforage.getItem('sauce_os_recipes');
+
+                if (savedCatalog) plantCatalog = savedCatalog;
+                if (savedRecipes) recipes = savedRecipes;
+                if (savedDb) db = savedDb;
+                
+                renderGrid('tentGrid', 16, 4, 'tent');
+                renderGrid('plotGrid', 338, 26, 'plot'); // 26x13 = 338 cells
+                updateDashboardStats();
+                renderRecipeTable();
+            } catch (err) {
+                console.error("Error loading state:", err);
+                // Fallback to empty grids on error
+                renderGrid('tentGrid', 16, 4, 'tent');
+                renderGrid('plotGrid', 338, 26, 'plot');
+            }
+        }
+
+        // --- UI Interactions ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-slate-800', 'text-white', 'text-brand-400');
+                btn.classList.add('text-slate-400');
+            });
+            
+            const target = document.getElementById(tabId);
+            target.classList.remove('hidden');
+            
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            activeBtn.classList.remove('text-slate-400');
+            activeBtn.classList.add('bg-slate-800', 'text-brand-400');
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'bg-slate-800 border border-slate-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 toast-animate text-sm';
+            toast.innerHTML = `<span class="text-brand-400">✓</span> ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'all 0.3s ease-out';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // --- Dashboard Widgets ---
+        function updateDashboardStats() {
+            const container = document.getElementById('dashboard-stats-container');
+            let counts = {};
+            let total = 0;
+
+            ['tent', 'plot'].forEach(zone => {
+                for (const id in db[zone]) {
+                    const plant = db[zone][id];
+                    const key = `${plant.variety} (${plant.category})`;
+                    counts[key] = (counts[key] || 0) + 1;
+                    total++;
+                }
+            });
+
+            if (total === 0) {
+                container.innerHTML = `<p class="text-slate-500 text-sm italic">No active crops logged.</p>`;
+                return;
+            }
+
+            let html = `<div class="mb-4 pb-4 border-b border-slate-700 flex justify-between items-center">
+                            <span class="text-slate-400">Total Live Nodes:</span>
+                            <span class="text-2xl font-bold text-white">${total}</span>
+                        </div>`;
+            
+            for (const [key, qty] of Object.entries(counts)) {
+                const percentage = Math.round((qty / total) * 100);
+                html += `
+                    <div class="mb-3">
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-slate-300 font-medium">${key}</span>
+                            <span class="text-brand-400 font-bold">${qty}</span>
+                        </div>
+                        <div class="w-full bg-slate-900 rounded-full h-1.5">
+                            <div class="bg-brand-500 h-1.5 rounded-full" style="width: ${percentage}%"></div>
+                        </div>
+                    </div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        // --- Garden Operations Logic ---
+        let activeSelection = null;
+        let isClickValid = true; // Prevents triggering select on drag
+
+        function renderGrid(containerId, totalCells, columns, zone) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            for (let i = 1; i <= totalCells; i++) {
+                const cell = document.createElement('div');
+                // Added min-h-[36px] to prevent Safari collapse on empty divs
+                cell.className = 'bg-slate-900 border border-slate-700 rounded-md min-h-[36px] flex items-center justify-center text-xs font-mono font-bold cursor-pointer transition-colors text-slate-500 select-none';
+                cell.style.aspectRatio = '1 / 1';
+                cell.id = `cell-${zone}-${i}`;
+                
+                if (db[zone][i]) {
+                    cell.innerText = db[zone][i].abbr;
+                    cell.classList.add('bg-slate-800', 'text-brand-400', 'border-slate-600');
+                }
+
+                cell.onclick = () => { if (isClickValid) selectNode(zone, i); };
+                container.appendChild(cell);
+            }
+        }
+
+        function selectNode(zone, id) {
+            if (activeSelection) {
+                const prevCell = document.getElementById(`cell-${activeSelection.zone}-${activeSelection.id}`);
+                // Safely remove the selection ring if the element still exists
+                if(prevCell) prevCell.classList.remove('ring-4', 'ring-inset', 'ring-brand-500', 'z-10');
+            }
+
+            activeSelection = { zone, id };
+            const cell = document.getElementById(`cell-${zone}-${id}`);
+            // Added thicker, inset ring and z-index so it pops on mobile
+            cell.classList.add('ring-4', 'ring-inset', 'ring-brand-500', 'z-10');
+
+            const zoneName = zone === 'tent' ? 'Tent' : 'Plot';
+            const col = zone === 'plot' ? (id % 26 === 0 ? 26 : id % 26) : (id % 4 === 0 ? 4 : id % 4);
+            const row = Math.ceil(id / (zone === 'plot' ? 26 : 4));
+            document.getElementById('active-node-display').innerText = `${zoneName} | R${row}:C${col}`;
+
+            const plant = db[zone][id];
+            if (plant) {
+                renderCatalogOptions(plant.abbr);
+                document.getElementById('p-seeded').value = plant.seeded;
+                document.getElementById('p-transplanted').value = plant.transplanted;
+                document.getElementById('p-planted').value = plant.planted;
+                renderNotes(plant.notes);
+            } else {
+                document.getElementById('plantForm').reset();
+                renderCatalogOptions();
+                document.getElementById('new-note-date').value = new Date().toISOString().split('T')[0];
+                renderNotes([]);
+            }
+
+            if (window.innerWidth < 1280) {
+                setTimeout(() => document.getElementById('node-terminal-container').scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+            }
+        }
+
+        function renderCatalogOptions(selectedAbbr = null) {
+            const group = document.getElementById('catalog-saved-options');
+            group.innerHTML = '';
+            
+            plantCatalog.forEach(plant => {
+                const opt = document.createElement('option');
+                opt.value = plant.abbr;
+                opt.innerText = `${plant.variety} (${plant.abbr}) - ${plant.category}`;
+                if (plant.abbr === selectedAbbr) opt.selected = true;
+                group.appendChild(opt);
+            });
+
+            handleCatalogChange(document.getElementById('p-catalog'));
+        }
+
+        function handleCatalogChange(selectElement) {
+            const builder = document.getElementById('custom-variety-builder');
+            if (selectElement.value === 'NEW_CUSTOM') {
+                builder.classList.remove('hidden');
+            } else {
+                builder.classList.add('hidden');
+            }
+        }
+
+        function savePlant() {
+            if (!activeSelection) return;
+
+            let cat, variety, abbr;
+            const selectVal = document.getElementById('p-catalog').value;
+
+            if (selectVal === '') return;
+
+            if (selectVal === 'NEW_CUSTOM') {
+                cat = document.getElementById('cv-category').value || 'Unknown';
+                variety = document.getElementById('cv-variety').value || 'Unknown';
+                abbr = document.getElementById('cv-abbr').value.toUpperCase().substring(0,3) || 'UNK';
+                plantCatalog.push({ category: cat, variety: variety, abbr: abbr });
+                renderCatalogOptions(abbr); 
+            } else {
+                const found = plantCatalog.find(p => p.abbr === selectVal);
+                cat = found.category; variety = found.variety; abbr = found.abbr;
+            }
+
+            const existingNotes = db[activeSelection.zone][activeSelection.id]?.notes || [];
+            
+            db[activeSelection.zone][activeSelection.id] = {
+                category: cat, variety: variety, abbr: abbr,
+                seeded: document.getElementById('p-seeded').value,
+                transplanted: document.getElementById('p-transplanted').value,
+                planted: document.getElementById('p-planted').value,
+                notes: existingNotes
+            };
+
+            const cell = document.getElementById(`cell-${activeSelection.zone}-${activeSelection.id}`);
+            cell.innerText = abbr;
+            cell.classList.add('bg-slate-800', 'text-brand-400', 'border-slate-600');
+            
+            saveState();
+            showToast(`Saved ${variety}`);
+        }
+
+        function deletePlant() {
+            if (!activeSelection) return;
+            delete db[activeSelection.zone][activeSelection.id];
+            
+            const cell = document.getElementById(`cell-${activeSelection.zone}-${activeSelection.id}`);
+            cell.innerText = '';
+            cell.classList.remove('bg-slate-800', 'text-brand-400', 'border-slate-600');
+            
+            document.getElementById('plantForm').reset();
+            renderCatalogOptions();
+            renderNotes([]);
+            saveState();
+            showToast("Node Cleared");
+        }
+
+        function addNote() {
+            if (!activeSelection || !db[activeSelection.zone][activeSelection.id]) return;
+            const text = document.getElementById('new-note-text').value;
+            const date = document.getElementById('new-note-date').value;
+
+            if (!text) return;
+            db[activeSelection.zone][activeSelection.id].notes.push({ date, text });
+            document.getElementById('new-note-text').value = '';
+            
+            renderNotes(db[activeSelection.zone][activeSelection.id].notes);
+            saveState();
+        }
+
+        function renderNotes(notesArray) {
+            const container = document.getElementById('notes-container');
+            container.innerHTML = '';
+            if (notesArray.length === 0) {
+                container.innerHTML = `<div class="text-slate-500 text-sm text-center py-4 italic">No observations logged yet.</div>`;
+                return;
+            }
+            const sorted = [...notesArray].sort((a, b) => new Date(b.date) - new Date(a.date));
+            sorted.forEach(note => {
+                const div = document.createElement('div');
+                div.className = 'bg-slate-900 border border-slate-700/50 p-3 rounded-lg flex flex-col gap-1';
+                div.innerHTML = `
+                    <span class="text-[10px] text-brand-400 font-mono">${note.date}</span>
+                    <span class="text-sm text-slate-300">${note.text}</span>`;
+                container.appendChild(div);
+            });
+        }
+
+        // --- Pan & Zoom Engine ---
+        let plotScale = 1;
+        let panX = 0; let panY = 0;
+        let isDragging = false;
+        let tapStartX, tapStartY;
+        let lastTouchX, lastTouchY;
+
+        function setupPanZoom() {
+            const viewport = document.getElementById('plotViewport');
+            
+            // --- Mouse Events (Desktop) ---
+            viewport.addEventListener('mousedown', (e) => {
+                isDragging = true; 
+                isClickValid = true; // Assume click until they move too far
+                viewport.classList.add('cursor-grabbing');
+                tapStartX = e.clientX; 
+                tapStartY = e.clientY;
+            });
+            window.addEventListener('mousemove', (e) => {
+                if(!isDragging) return;
+                
+                // If radial distance > 5px, it's a drag, not a click
+                if (Math.hypot(e.clientX - tapStartX, e.clientY - tapStartY) > 5) {
+                    isClickValid = false;
+                }
+
+                panX += e.movementX; 
+                panY += e.movementY;
+                updatePlotTransform();
+            });
+            window.addEventListener('mouseup', () => { isDragging = false; viewport.classList.remove('cursor-grabbing'); });
+            viewport.addEventListener('mouseleave', () => { isDragging = false; viewport.classList.remove('cursor-grabbing'); });
+            viewport.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                zoomPlot((e.deltaY < 0 ? 1 : -1) * 0.1);
+            });
+
+            // --- Touch Events (Mobile iPhone) ---
+            viewport.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true; 
+                    isClickValid = true; // Assume tap until finger shakes too far
+                    viewport.classList.add('cursor-grabbing');
+                    
+                    tapStartX = e.touches[0].clientX;
+                    tapStartY = e.touches[0].clientY;
+                    lastTouchX = tapStartX; 
+                    lastTouchY = tapStartY;
+                }
+            }, { passive: false });
+            
+            viewport.addEventListener('touchmove', (e) => {
+                if (!isDragging || e.touches.length !== 1) return;
+                e.preventDefault(); // Stop webpage from scrolling
+                
+                const touch = e.touches[0];
+                
+                // If finger moves more than 10px radially, cancel the click
+                if (Math.hypot(touch.clientX - tapStartX, touch.clientY - tapStartY) > 10) {
+                    isClickValid = false;
+                }
+
+                panX += touch.clientX - lastTouchX; 
+                panY += touch.clientY - lastTouchY;
+                
+                lastTouchX = touch.clientX; 
+                lastTouchY = touch.clientY;
+                updatePlotTransform();
+            }, { passive: false });
+            
+            window.addEventListener('touchend', () => { isDragging = false; viewport.classList.remove('cursor-grabbing'); });
+        }
+
+        function zoomPlot(delta) {
+            plotScale = Math.max(0.4, Math.min(plotScale + 2.5, plotScale + delta));
+            updatePlotTransform();
+        }
+
+        function resetPlotTransform() {
+            plotScale = 1; panX = 0; panY = 0;
+            updatePlotTransform();
+        }
+
+        function updatePlotTransform() {
+            document.getElementById('plotTransformWrapper').style.transform = `translate(${panX}px, ${panY}px) scale(${plotScale})`;
+        }
+
+        // --- R&D Logic ---
+        function calculateRecipe() {
+            const vol = document.getElementById('volume-slider').value;
+            document.getElementById('volume-display').innerText = `${vol} oz`;
+            document.getElementById('calc-peppers').innerText = (vol * 0.60).toFixed(1) + ' oz';
+            document.getElementById('calc-vinegar').innerText = (vol * 0.30).toFixed(1) + ' oz';
+            document.getElementById('calc-garlic').innerText = (vol * 0.07).toFixed(1) + ' oz';
+            document.getElementById('calc-salt').innerText = (vol * 0.03).toFixed(1) + ' oz';
+        }
+
+        function renderRecipeTable() {
+            const tbody = document.getElementById('recipeTableBody');
+            tbody.innerHTML = '';
+            recipes.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-mono text-brand-400">${r.id}</td>
+                    <td class="px-4 py-3 text-white font-medium">${r.name}</td>
+                    <td class="px-4 py-3">${r.ferment}</td>
+                    <td class="px-4 py-3">${r.ph}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function addBatchLog() {
+            const name = document.getElementById('batchName').value || "Unnamed Mash";
+            const ph = document.getElementById('batchPH').value || "N/A";
+            const newId = `#00${recipes.length + 1}`;
+            recipes.unshift({ id: newId, name: name, ferment: "Active", ph: ph });
+            renderRecipeTable();
+            saveState();
+            document.getElementById('batchName').value = '';
+            document.getElementById('batchPH').value = '';
+            showToast(`Batch ${newId} Logged`);
+        }
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            localforage.config({ name: 'SauceOS_Database', storeName: 'garden_data' });
+            loadState();
+            setupPanZoom();
+            calculateRecipe();
+            switchTab('overview');
+            document.getElementById('new-note-date').value = new Date().toISOString().split('T')[0];
+        });
+    </script>
+</body>
+</html>
